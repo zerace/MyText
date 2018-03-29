@@ -1,0 +1,135 @@
+package aaa;
+
+import java.awt.EventQueue;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.xml.bind.DatatypeConverter;
+
+
+
+public class NetworkInterfaceInfo {
+
+	private JFrame frame;	// 窗口
+	private JTextArea textAreaInfo;	// 信息文本区
+	private JButton btnNewButton;  // 点击显示网络接口配置按钮
+
+	public static void main(String[] args) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					NetworkInterfaceInfo window = new NetworkInterfaceInfo();
+					window.frame.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+
+	public NetworkInterfaceInfo() {
+		initialize();
+	}
+
+	private void initialize() {
+		frame = new JFrame();
+		frame.setResizable(false);
+		frame.setTitle("\u4E3B\u673A\u7F51\u7EDC\u914D\u7F6E\u4FE1\u606F");
+		frame.setBounds(100, 100, 728, 691);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.getContentPane().setLayout(null);
+		
+		btnNewButton = new JButton("\u70B9\u51FB\u663E\u793A\u7F51\u7EDC\u63A5\u53E3\u914D\u7F6E");
+		btnNewButton.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0){
+				textAreaInfo.setText("");
+				String nicInfo = getNetworkInfo();
+				textAreaInfo.append(nicInfo);
+			}
+		});
+		btnNewButton.setBounds(73, 13, 520, 33);
+		frame.getContentPane().add(btnNewButton);
+		
+		JScrollPane scrollPane = new JScrollPane();
+		scrollPane.setBounds(14, 59, 697, 579);
+		frame.getContentPane().add(scrollPane);
+		
+		textAreaInfo = new JTextArea();
+		textAreaInfo.setFont(new Font("Monospaced", Font.PLAIN, 15));
+		scrollPane.setViewportView(textAreaInfo);
+		
+	}
+	
+	
+	//获取网络配置信息，返回字符串
+	private String getNetworkInfo(){
+		StringBuilder sb = new StringBuilder();
+		
+		try {
+                        //获取主机名
+			String hostname = InetAddress.getLocalHost().getHostName();
+			sb.append("本地主机名"+hostname+"\n");
+			sb.append("====================================================\n");
+			//获取网卡列表
+			Enumeration<NetworkInterface>interfaces = NetworkInterface.getNetworkInterfaces();
+			while(interfaces.hasMoreElements()){
+                                //获取每个网卡的信息
+				NetworkInterface nic = interfaces.nextElement();
+				
+				sb.append("  接口名称："+nic.getName()+"\n");
+				sb.append("  显示名称："+nic.getDisplayName());
+				
+				sb.append("  接口状态：");
+                                //判断该接口是否已激活
+				if(nic.isUp()){
+					sb.append("已经激活\n");
+				}
+				else{
+					sb.append("已经关闭\n");
+				}
+				
+				sb.append("  是否环回接口：");
+                                //是否环回接口
+				if(nic.isLoopback()){
+					sb.append("环回接口\n");
+				}
+				else{
+					sb.append("非环回接口\n");
+				}
+				
+				sb.append("  接口MTU:"+nic.getMTU()+"\n");//获取此接口最大传输单元
+				
+				byte[] macAddr = nic.getHardwareAddress();//获取此接口的硬件地址
+				if(macAddr !=null){
+					sb.append("  接口硬件地址(MAC地址)："+DatatypeConverter.printHexBinary(macAddr)+"\n");
+				} else{
+					sb.append("  ！！无法获取该网卡硬件地址\n");
+				}
+				
+                                //获取此接口的IP地址列表
+				sb.append("  IP地址列表：");
+				Enumeration<InetAddress> ipAddresses = nic.getInetAddresses();//获取此接口所有的IP地址
+				while(ipAddresses.hasMoreElements()){
+					sb.append("\t"+ipAddresses.nextElement().getHostAddress()+"\n");
+				}
+				sb.append("\n===================================================\n");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return"程序运行程序异常，无法获取网络信息，请检查安全软件配置.";
+		}
+		return sb.toString();
+	}
+	
+
+}
+
+
