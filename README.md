@@ -1,0 +1,39 @@
+# MyText
+package aaa;
+
+import java.io.*;
+import java.io.IOException;
+import java.util.Date;
+import java.util.Random;
+
+public class BinaryStreamDemo {
+
+	public static void main(String[] args) throws IOException{
+		short command=2;
+		int pkeLen=20;
+		int seq=new Random().nextInt();
+		long time=new Date().getTime();
+		String msg="保存重要数据";
+		BufferedOutputStream bos=new BufferedOutputStream(new FileOutputStream("C:\\data.dat"));
+		DataOutputStream dos=new DataOutputStream(bos);
+		dos.writeShort(command);
+		dos.writeInt(pkeLen);
+		dos.writeInt(seq);
+		dos.writeLong(time);
+		dos.writeUTF(msg);
+		dos.flush();
+		dos.close();
+		bos.close();
+		System.out.println("文件保存成功");
+		BufferedInputStream bis = new BufferedInputStream(new FileInputStream("C:\\data.dat"));
+		DataInputStream dis=new DataInputStream(bis);
+		System.out.println("读取文件数据：");
+		System.out.println("Command="+dis.readShort());
+		System.out.println("PktLen="+dis.readInt());
+		System.out.println("Seq="+dis.readInt());
+		System.out.println("Time="+dis.readLong());
+		System.out.println("Msg="+dis.readUTF());
+
+	}
+
+}
