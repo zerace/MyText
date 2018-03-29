@@ -1,0 +1,66 @@
+package aaa;
+
+import java.io.*;
+import java.io.Serializable;
+import java.util.Date;
+import java.util.Random;
+
+class MyPacket implements Serializable{  //实现序列化接口
+	public short command;
+	public int pktLen;
+	public int seq;
+	public long time;
+	public String msg;
+	
+	public MyPacket(){
+	}
+	
+	
+	public MyPacket(short command, int pktLen, int seq, long time, String msg) {
+		super();
+		this.command = command;
+		this.pktLen = pktLen;
+		this.seq = seq;
+		this.time = time;
+		this.msg = msg;
+	}
+
+
+	@Override
+	public String toString() {
+		return "MyPacket [command=" + command + ", pktLen=" + pktLen + ", seq="
+				+ seq + ", time=" + time + ", msg=" + msg + "]";
+	}
+	
+	
+}
+
+public class ObjectStreamDemo {
+
+	public static void main(String[] args) throws Exception{
+		short command=2;
+		int pktLen=20;
+		int seq=new Random().nextInt();
+		long time=new Date().getTime();
+		String msg="保存重要数据";
+		MyPacket packetWrite = new MyPacket(command,pktLen,seq,time,msg);  
+
+                //创建文件缓冲输出流
+		BufferedOutputStream bos=new BufferedOutputStream(new FileOutputStream("C:\\data.obj"));
+		ObjectOutputStream oos=new ObjectOutputStream(bos);
+		oos.writeObject(packetWrite);
+                //刷新缓冲区
+		oos.flush();
+		oos.close();
+		System.out.println("文件保存成功。");
+		
+                //开始读取数据
+		BufferedInputStream bis=new BufferedInputStream(new FileInputStream("C:\\data.obj"));
+		ObjectInputStream ois =new ObjectInputStream(bis);
+		System.out.println("读取文件数据:");
+		MyPacket packetRead = (MyPacket) ois.readObject();
+		System.out.println(packetRead);
+
+	}
+
+}
