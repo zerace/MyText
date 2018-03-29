@@ -1,0 +1,75 @@
+package aaa;
+
+import java.io.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+class SplitRunnable implements Runnable{
+	
+	private int fileSize;  //分割后的子文件大小
+	private String originalFilePath;  //原始文件路径
+	private String splitFilePath;    //分割后的子文件路径
+	private int startPos;    //起始位置
+	
+	public SplitRunnable(int fileSize,String originalFilePath,String splitFilePath,int startPos){
+		this.fileSize=fileSize;
+		this.originalFilePath=originalFilePath;
+		this.splitFilePath=splitFilePath;
+		this.startPos=startPos;
+	}
+
+	@Override
+	public void run() {
+		RandomAccessFile raf = null;
+		FileOutputStream fos =null;
+		try {
+			raf=new RandomAccessFile(originalFilePath,"r");
+			raf.seek(startPos);
+			fos = new FileOutputStream(splitFilePath);
+			byte[] buffer = new byte[8*1024];
+			int len=0;
+			while((len=raf.read(buffer))!=-1){
+				fos.write(buffer.length);
+				fileSize-=len;
+				if(fileSize<=0){  //已经读写了一定的大小，退出循环
+					break;
+				}
+			}
+			fos.flush();
+			fos.close();
+			raf.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	
+}
+
+public class SplitFileDemo {
+	
+	private static int SPLIT_FILE_SIZE = 1024*1024*8;  //小文件大小为8M
+
+	public static void main(String[] args) throws Exception{
+		String originalFilePath ="c:\\text.zip";
+		File originalFile = new File("c:\\text.zip");
+		ExecutorService pool= Executors.newFixedThreadPool(2*Runtime.getRuntime().availableProcessors());
+		long originalFileSize=originalFile.length();
+		int splitFileCount = (int) Math.ceil((double) originalFileSize/ SPLIT_FILE_SIZE);
+		long startTime =System.nanoTime();
+		for(int i=0;i<=splitFileCount;i++){
+			String splitFilePath = "c:\\text"+"_"+i+".tmp";
+			int startPos=i*SPLIT_FILE_SIZE;
+			SplitRunnable task = new SplitRunnable(SPLIT_FILE_SIZE,splitFilePath,originalFilePath,startPos);
+			pool.submit(task); //将任务task加到线程池pool中
+		}
+		pool.shutdown(); //停止往线程池提交任务
+		pool.awaitTermination(10, TimeUnit.DAYS);//等待线程池任务执行结束
+		long endTime=System.nanoTime();
+		System.out.println("花费时间:"+(endTime-startTime)/1000000000.0);//计算所有任务执行的总时间
+	}
+
+}
