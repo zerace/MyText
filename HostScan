@@ -1,0 +1,263 @@
+//编写一个网络主机扫描程序，扫描指定地址段的活动主机，并输出活动主机的IP地址，同时使用进度条显示扫描进度.
+
+package aaa;
+
+
+import java.awt.EventQueue;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.UIManager;
+
+public class HostScan {
+	long totalHost;
+	AtomicLong numOfFinished;
+	AtomicLong numOfReachable;
+	int MAX_THREADS = 50;
+	int timeout = 100;
+	int count = 1;
+	Timer timer;
+	long startIp;
+	long endIp;
+	
+	public long ipStrToLong(String ipStr){
+		String parts[] = ipStr.split("\\.");
+		long value = (long)(Long.valueOf(parts[0])*Math.pow(2, 24)+ Long.valueOf(parts[1])*Math.pow(2, 16) + Long.valueOf(parts[2])*Math.pow(2, 8)+ Long.valueOf(parts[3]));
+		return value;
+	}
+	
+	public String ipLongToStr(long ipLong){
+		int part1 = (int)(ipLong/Math.pow(2, 24));
+		ipLong-=part1*Math.pow(2, 24);
+		
+		int part2 = (int)(ipLong/Math.pow(2, 16));
+		ipLong-=part2*Math.pow(2, 16);
+		
+		int part3 = (int)(ipLong/Math.pow(2, 8));
+		
+		int part4 = (int)(ipLong-part3*Math.pow(2, 8));
+		return part1+"."+part2+"."+part3+"."+part4;
+	}
+	
+	public static boolean isValidIp(String ipStr){
+		
+		String parts[] = ipStr.split("\\.");
+		if(parts.length !=4){
+			return false;
+		}
+		for(int i=0;i<parts.length;i++){
+			int value;
+			try {
+				value=Integer.parseInt(parts[i]);
+			} catch (NumberFormatException e) {
+				System.out.println("exception");
+				return false;
+			}
+			if(value<0 || value>255){
+				return false;
+			}
+			
+		}
+		return true;
+	}
+	
+	class PingHostThread implements Runnable{
+		long ip;
+		
+		public PingHostThread(long ip){
+			this.ip=ip;
+		}
+		public boolean isReachable(String ipStr,int count,int timeout){
+			Process pro;
+			String pingCmd="ping"+ipStr+"-n"+count+"-w"+timeout;
+			try {
+				pro=Runtime.getRuntime().exec(pingCmd);
+				BufferedReader br = new BufferedReader(new InputStreamReader(pro.getInputStream()));
+				StringBuilder sb = new StringBuilder();
+				String s;
+				while((s=br.readLine()) !=null){
+					sb.append(s);
+				}
+				if(sb.toString().contains("100%丢失")){
+					return false;
+				}
+				return true;
+			} catch (IOException e) {
+				e.printStackTrace();
+				return false;
+			}
+		}
+		
+		public void run(){
+			String ipStr=ipLongToStr(ip);
+			if(isReachable(ipStr,count,timeout)){
+				numOfReachable.incrementAndGet();
+				String res = "主机"+ipStr+"可达\n";
+				textAreaResult.append(res);
+			
+			}
+			numOfFinished.incrementAndGet();
+		
+		}
+	}
+	
+	
+	SimpleDateFormat format; // 时间格式化对象
+	private JFrame frame;	// 窗口
+	private JTextField textStartIP;	// 起始IP文本框
+	private JTextField textEndIP;	// 结束IP文本框
+	private JProgressBar progress;	// 进度条
+	private JButton btnStart;	// 启动按钮
+	private JTextArea textAreaResult;	// 查询结果文本区
+
+	public static void main(String[] args) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					HostScan window = new HostScan();
+					window.frame.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+
+	public HostScan() {
+		initialize();
+		format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+		
+
+	}
+
+	private void initialize() {
+	
+		frame = new JFrame();
+		frame.setResizable(false);
+		frame.setTitle("\u7F51\u7EDC\u6D3B\u52A8\u4E3B\u673A\u626B\u63CF");
+		frame.setBounds(100, 100, 686, 458);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.getContentPane().setLayout(null);
+
+		JLabel label = new JLabel("\u8F93\u5165\u7F51\u7EDC\u4E3B\u673A\u4FE1\u606F");
+		label.setBounds(14, 13, 167, 18);
+		frame.getContentPane().add(label);
+
+		JLabel lblNewLabel = new JLabel("\u8D77\u59CBIP\u5730\u5740:");
+		lblNewLabel.setBounds(14, 39, 97, 24);
+		frame.getContentPane().add(lblNewLabel);
+		
+		textStartIP = new JTextField();
+		textStartIP.setText("210.38.224.0");
+		textStartIP.setBounds(106, 39, 122, 24);
+		frame.getContentPane().add(textStartIP);
+		textStartIP.setColumns(10);
+
+		JLabel lblip = new JLabel("\u7ED3\u675FIP\u5730\u5740:");
+		lblip.setBounds(242, 39, 97, 24);
+		frame.getContentPane().add(lblip);
+
+		textEndIP = new JTextField();
+		textEndIP.setText("210.38.224.250");
+		textEndIP.setColumns(10);
+		textEndIP.setBounds(330, 39, 127, 24);
+		frame.getContentPane().add(textEndIP);
+
+		btnStart = new JButton("\u542F\u52A8");
+		btnStart.setBounds(471, 38, 97, 27);
+		frame.getContentPane().add(btnStart);
+
+		JLabel label_1 = new JLabel("\u626B\u63CF\u7ED3\u679C:");
+		label_1.setBounds(14, 126, 97, 24);
+		frame.getContentPane().add(label_1);
+
+		JScrollPane scrollPane = new JScrollPane();
+		scrollPane.setBounds(14, 149, 652, 263);
+		frame.getContentPane().add(scrollPane);
+
+		textAreaResult = new JTextArea();
+		textAreaResult.setFont(new Font("Monospaced", Font.PLAIN, 15));
+		textAreaResult.setLocation(16, 0);
+		scrollPane.setViewportView(textAreaResult);
+
+		JLabel lblNewLabel_1 = new JLabel("\u8FDB\u5EA6\u4FE1\u606F");
+		lblNewLabel_1.setBounds(14, 64, 586, 24);
+		frame.getContentPane().add(lblNewLabel_1);
+
+		progress = new JProgressBar();
+		progress.setStringPainted(true);
+		progress.setBounds(14, 89, 652, 27);
+		frame.getContentPane().add(progress);
+		progress.setVisible(false);
+		try {
+			String style = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
+			UIManager.setLookAndFeel(style);
+			// 更新窗体样式
+			SwingUtilities.updateComponentTreeUI(this.frame);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		
+		btnStart.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0){
+				textAreaResult.setText("");
+				if(isValidIp(textStartIP.getText().trim())==false || isValidIp(textStartIP.getText().trim())==false){
+					JOptionPane.showMessageDialog(HostScan.this.frame,"IP地址格式错误，请重新输入。");
+					return;
+				}
+				startIp = ipStrToLong(textStartIP.getText());
+				endIp = ipStrToLong(textStartIP.getText());
+				if(startIp>endIp){
+					JOptionPane.showMessageDialog(HostScan.this.frame,"起始IP地址不能比结束IP地址大");
+					return;
+				}
+				totalHost = endIp-startIp;
+				numOfFinished = new AtomicLong(0);
+				numOfReachable = new AtomicLong(0);
+				ExecutorService pools = Executors.newFixedThreadPool(MAX_THREADS);
+				for(long i =startIp;i<endIp;i++){
+					pools.submit(new PingHostThread(i));
+				}
+				progress.setVisible(true);
+				pools.shutdown();
+				timer = new Timer(1000,new ActionListener(){
+
+					@Override
+					public void actionPerformed(ActionEvent arg0) {
+						int percent;
+						if(numOfFinished.get()==totalHost){
+							percent = 100;
+							timer.stop();
+							textAreaResult.append("共完成："+numOfFinished+"台主机扫码;"+"共"+numOfReachable+"台主机可达！");
+						}else{
+							percent=(int)(numOfFinished.get()*100/totalHost);
+						}
+						progress.setValue((int)percent);
+					}
+					
+				});
+				timer.start();
+			}
+		});
+	}
+
+}
